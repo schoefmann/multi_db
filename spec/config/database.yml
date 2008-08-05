@@ -1,0 +1,20 @@
+test:
+  adapter: mysql
+  database: multi_db_test
+  username: root
+  password:
+  host: 127.0.0.1
+
+test_slave_database_1:
+  adapter: mysql
+  database: multi_db_test
+  username: root
+  password:
+  host: 127.0.0.1
+
+test_slave_database_2:
+  adapter: mysql
+  database: multi_db_test
+  username: root
+  password:
+  host: 127.0.0.1
