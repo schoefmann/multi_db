@@ -3,10 +3,9 @@ multi_db
 
     -- This Plugin was inspired by Rick Olson's "masochism"-Plugin
 
-The connection proxy sends some queries (anything that issues "select" quries
-to the database) to slave databases, and the rest to the master. Also, within
-transaction, AR-Observers and "with_master" blocks, even selects are sent to
-the master.
+The connection proxy sends read queries to slave databases, and all write 
+queries to the master (Read/Write Split). Within transactions, while executing 
+AR-Observers and "with_master" blocks, even read queries are sent to the master.
 
 Setup
 -----
@@ -51,25 +50,26 @@ the corresponding file in config/environments:
 Differences to "masochism":
 ---------------------------
 
- * It sends anything except "select.*" queries to the master, instead of sending
-   only specific things to the master and anything "else" to the slave, which 
-   is a lot more dangerous (e.g. "execute" wasn't included in earlier versions)
- * It sends everything coming from AR-Observers to the master, to avoid
-   race conditions (idea from one of the commenters on a blog entry)
- * It uses an own query cache (with masochism, the slaves cache isn't emptied
+ * Support for multiple slave connections (round robin)
+ * It sends anything except "select ..." queries to the master, instead of 
+   sending only specific things to the master and anything "else" to the slave, 
+   which is a lot more dangerous (e.g. "execute" wasn't sent to the master in 
+   earlier versions of masochism)
+ * It sends everything coming from AR-Observers to the master, to avoid race 
+   conditions (idea from one of the commenters on a blog entry about masochism)
+ * It uses its own query cache (with masochism, the slave's cache isn't emptied 
    when there are changes on the master)
- * It supports immediate failover for the slave connection
+ * It supports immediate failover for slave connections
  * It will wait some time before trying to query a failed slave database again
- * It supports nested "with_master"-blocks (in masochism, nesting such blocks
+ * It supports nested "with_master"-blocks (in masochism, nesting such blocks 
    would unexpectedly switch you to the slave again)
  * It schedules a reconnect on the master connection to avoid problems
    with virtual, migrating IPs for the master (e.g. multi-master HA setups)
  * It's possible to specify slave_database instead of master_database which
    makes migration between with and without multi_db less dangerous
- * Support multiple slave connections (round robin)
  * It allows environment specific settings for different slave setups
- * It doesn't come with set_to_master! and set_to_slave!, as these are considered 
-   dangerous (and make no sense) in a multi-slave setup. Instead of 
+ * It doesn't come with set_to_master! and set_to_slave!, as these are 
+   considered dangerous (and make no sense) in a multi-slave setup. Instead of 
    set_to_master!, use with_master { code }
 
 
@@ -84,3 +84,4 @@ From the plugin directory, run:
 
 
 Copyright (c) 2008, Max Schöfmann <max (a) pragmatic-it de>
+Released under the MIT license
