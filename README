@@ -3,9 +3,16 @@ multi_db
 
     -- This Plugin was inspired by Rick Olson's "masochism"-Plugin
 
-The connection proxy sends read queries to slave databases, and all write 
-queries to the master (Read/Write Split). Within transactions, while executing 
-AR-Observers and "with_master" blocks, even read queries are sent to the master.
+multi_db uses a connection proxy, which sends read queries to slave databases,
+and all write queries to the master database (Read/Write Split).
+Within transactions, while executing ActiveRecord Observers and
+within "with_master" blocks (see below), even read queries are sent to the 
+master database.
+
+Install
+-------
+
+Just drop the multi_db directory into your application's vendor/plugins dir.
 
 Setup
 -----
@@ -31,9 +38,8 @@ In your database.yml, add sections for the slaves, e.g.:
   production_slave_database_some_server: # yet another one
     ...
 
-Although rather useless, the slave connections would also be available via
-
-  SlaveDatabaseSomeServer.connection
+NOTE: multi_db identifies slave databases by looking for "slave_database"
+      somewhere in the database name!
 
 To enable the proxy globally, add this to your environment.rb, or some file in
 config/initializers:
