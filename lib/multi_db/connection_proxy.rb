@@ -37,11 +37,13 @@ module MultiDb
           self.environment = RAILS_ENV
         end
         master = ActiveRecord::Base
+        master.send :include, MultiDb::ActiveRecordExtensions
         slaves = init_slaves
         raise "No slaves defined in database configuration" if slaves.empty?
         slaves.each {|slave| slave.send :include, MultiDb::ActiveRecordExtensions}
         ActiveRecord::Observer.send :include, MultiDb::ObserverExtensions
-        ActiveRecord::Base.active_connections[master.name] = new(master, slaves)
+        master.connection_proxy = new(master, slaves)
+        master.logger.info("** multi_db with master and #{slaves.length} slave#{"s" if slaves.length > 1} loaded.")
       end
 
       # Slave entries in the database.yml must be named like this
@@ -70,8 +72,8 @@ module MultiDb
     end
 
     def initialize(master, slaves)
-      @slaves      = Scheduler.new(slaves.map(&:connection))
-      @master      = master.connection
+      @slaves      = Scheduler.new(slaves)
+      @master      = master
       @current     = @slaves.current
       @reconnect   = false
       @with_master = 0
@@ -91,7 +93,7 @@ module MultiDb
     end
     
     def transaction(start_db_transaction = true, &block)
-      with_master { @current.transaction(start_db_transaction, &block) }
+      with_master { get_connection(@current).transaction(start_db_transaction, &block) }
     end
 
     # Calls the method on master/slave and dynamically creates a new
@@ -103,7 +105,11 @@ module MultiDb
     end
         
     protected
-    
+
+    def get_connection(db_class)
+      db_class.retrieve_connection
+    end
+
     def create_delegation_method!(method)
       self.instance_eval %Q{
         def #{method}(*args, &block)
@@ -119,14 +125,14 @@ module MultiDb
     
     def send_to_master(method, *args, &block)
       reconnect_master! if @reconnect
-      @master.send(method, *args, &block)
+      get_connection(@master).send(method, *args, &block)
     rescue => e
       raise_master_error(e)
     end
     
     def send_to_current(method, *args, &block)
       reconnect_master! if @reconnect && master?
-      @current.send(method, *args, &block)
+      get_connection(@current).send(method, *args, &block)
     rescue NotImplementedError, NoMethodError
       raise
     rescue => e # TODO don't rescue everything
@@ -147,7 +153,7 @@ module MultiDb
     end
     
     def reconnect_master!
-      @master.reconnect!
+      get_connection(@master).reconnect!
       @reconnect = false
     end
     

@@ -38,7 +38,7 @@ describe MultiDb::ConnectionProxy do
   end
   
   it 'should perform transactions on the master' do
-    @proxy.master.should_receive(:select_all).exactly(1) # makes sure the first one goes to a slave
+    @proxy.master.retrieve_connection.should_receive(:select_all).exactly(1) # makes sure the first one goes to a slave
     @proxy.select_all(@sql)
     ActiveRecord::Base.transaction do
       @proxy.select_all(@sql)
@@ -46,15 +46,15 @@ describe MultiDb::ConnectionProxy do
   end
   
   it 'should switch to the next reader on selects' do
-    MultiDb::SlaveDatabase1.connection.should_receive(:select_one).twice
-    MultiDb::SlaveDatabase2.connection.should_receive(:select_one).twice
+    MultiDb::SlaveDatabase1.retrieve_connection.should_receive(:select_one).twice
+    MultiDb::SlaveDatabase2.retrieve_connection.should_receive(:select_one).twice
     4.times { @proxy.select_one(@sql) }
   end
   
   it 'should not switch to the next reader when whithin a with_master-block' do
-    @proxy.master.should_receive(:select_one).twice
-    MultiDb::SlaveDatabase1.connection.should_not_receive(:select_one)
-    MultiDb::SlaveDatabase2.connection.should_not_receive(:select_one)
+    @proxy.master.retrieve_connection.should_receive(:select_one).twice
+    MultiDb::SlaveDatabase1.retrieve_connection.should_not_receive(:select_one)
+    MultiDb::SlaveDatabase2.retrieve_connection.should_not_receive(:select_one)
     @proxy.with_master do
       2.times { @proxy.select_one(@sql) }
     end
@@ -63,8 +63,8 @@ describe MultiDb::ConnectionProxy do
   it 'should send dangerous methods to the master' do
     meths = [:insert, :update, :delete, :execute]
     meths.each do |meth|
-      MultiDb::SlaveDatabase1.connection.stub!(meth).and_raise(RuntimeError)
-      @proxy.master.should_receive(meth).and_return(true)
+      MultiDb::SlaveDatabase1.retrieve_connection.stub!(meth).and_raise(RuntimeError)
+      @proxy.master.retrieve_connection.should_receive(meth).and_return(true)
       @proxy.send(meth, @sql)
     end
   end
@@ -78,9 +78,9 @@ describe MultiDb::ConnectionProxy do
   it 'should cache queries using select_all' do
     ActiveRecord::Base.cache do
       # next_reader will be called and switch to the SlaveDatabase2
-      MultiDb::SlaveDatabase2.connection.should_receive(:select_all).exactly(1)
-      MultiDb::SlaveDatabase1.connection.should_not_receive(:select_all)
-      @proxy.master.should_not_receive(:select_all)
+      MultiDb::SlaveDatabase2.retrieve_connection.should_receive(:select_all).exactly(1)
+      MultiDb::SlaveDatabase1.retrieve_connection.should_not_receive(:select_all)
+      @proxy.master.retrieve_connection.should_not_receive(:select_all)
       3.times { @proxy.select_all(@sql) }
     end
   end
@@ -89,10 +89,10 @@ describe MultiDb::ConnectionProxy do
     ActiveRecord::Base.cache do
       meths = [:insert, :update, :delete]
       meths.each do |meth|
-        @proxy.master.should_receive(meth).and_return(true)
+        @proxy.master.retrieve_connection.should_receive(meth).and_return(true)
       end
-      MultiDb::SlaveDatabase2.connection.should_receive(:select_all).twice
-      MultiDb::SlaveDatabase1.connection.should_receive(:select_all).once
+      MultiDb::SlaveDatabase2.retrieve_connection.should_receive(:select_all).twice
+      MultiDb::SlaveDatabase1.retrieve_connection.should_receive(:select_all).once
       3.times do |i|
         @proxy.select_all(@sql)
         @proxy.send(meths[i])
@@ -101,17 +101,17 @@ describe MultiDb::ConnectionProxy do
   end
   
   it 'should retry the next slave when one fails and finally fall back to the master' do
-    MultiDb::SlaveDatabase1.connection.should_receive(:select_all).once.and_raise(RuntimeError)
-    MultiDb::SlaveDatabase2.connection.should_receive(:select_all).once.and_raise(RuntimeError)
-    @proxy.master.should_receive(:select_all).and_return(true)
+    MultiDb::SlaveDatabase1.retrieve_connection.should_receive(:select_all).once.and_raise(RuntimeError)
+    MultiDb::SlaveDatabase2.retrieve_connection.should_receive(:select_all).once.and_raise(RuntimeError)
+    @proxy.master.retrieve_connection.should_receive(:select_all).and_return(true)
     @proxy.select_all(@sql)
   end
   
   it 'should try to reconnect the master connection after the master has failed' do
-    @proxy.master.should_receive(:update).and_raise(RuntimeError)
+    @proxy.master.retrieve_connection.should_receive(:update).and_raise(RuntimeError)
     lambda { @proxy.update(@sql) }.should raise_error
-    @proxy.master.should_receive(:reconnect!).and_return(true)
-    @proxy.master.should_receive(:insert).and_return(1)
+    @proxy.master.retrieve_connection.should_receive(:reconnect!).and_return(true)
+    @proxy.master.retrieve_connection.should_receive(:insert).and_return(1)
     @proxy.insert(@sql)
   end
   
