@@ -10,10 +10,7 @@ master database.
 
 === Caveats
 
-* Only activerecord 2.0.x and 2.1.x are supported right now
-* allow_concurrency set to true is currently not supported
-
-Patches welcome!
+* works with activerecord 2.1 - 2.2
 
 === Install
 
@@ -89,6 +86,11 @@ for your master and slave databases.
   set_to_master!, use with_master { code }
 
 
+=== Contributors
+
+ * Matt Conway http://github.com/wr0ngway
+ * Matthias Marshall http://github.com/webops
+
 === Running specs
 
 If you haven't already, install the rspec gem, then create an empty database
@@ -98,5 +100,5 @@ From the plugin directory, run:
   spec spec
 
 
-Copyright (c) 2008, Max Schöfmann <max (a) pragmatic-it de>
+Copyright (c) 2008, Max Schoefmann <max (a) pragmatic-it de>
 Released under the MIT license

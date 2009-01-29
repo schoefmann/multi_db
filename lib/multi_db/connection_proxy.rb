@@ -26,7 +26,6 @@ module MultiDb
       attr_accessor :environment
       
       def setup!
-        raise "multi_db currently doesn't support setting ActiveRecord::Base.allow_concurrency to true." if ActiveRecord::Base.allow_concurrency
         # if no configuration was set, we assume that rails is used and load the database.yml
         unless self.configuration
           raise "RAILS_ROOT not set. Set MultiDb::ConnectionProxy.configuration manually if you use multi_db outside rails" unless defined?(RAILS_ROOT)
