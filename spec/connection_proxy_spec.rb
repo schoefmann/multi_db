@@ -6,7 +6,6 @@ require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 
 RAILS_ROOT = MULTI_DB_SPEC_DIR
-RAILS_DEFAULT_LOGGER = ActiveRecord::Base.logger
 
 describe MultiDb::ConnectionProxy do
   

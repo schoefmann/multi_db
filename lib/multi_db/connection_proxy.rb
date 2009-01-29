@@ -14,10 +14,31 @@ module MultiDb
     
     class << self
       
+      # Example:
+      #  MultiDb::ConnectionProxy.configuration = {
+      #    :production_master_database => {
+      #      :adapter => 
+      #    }
+      #  }
+      # defaults to the content of Rails.root/config/database.yml if not set and used with Rails
+      attr_accessor :configuration
+      # defaults to RAILS_ENV if multi_db is used with Rails
+      attr_accessor :environment
+      
       def setup!
+        raise "multi_db currently doesn't support setting ActiveRecord::Base.allow_concurrency to true." if ActiveRecord::Base.allow_concurrency
+        # if no configuration was set, we assume that rails is used and load the database.yml
+        unless self.configuration
+          raise "RAILS_ROOT not set. Set MultiDb::ConnectionProxy.configuration manually if you use multi_db outside rails" unless defined?(RAILS_ROOT)
+          self.configuration = YAML.load(ERB.new(File.read(File.join(RAILS_ROOT, 'config', 'database.yml'))).result)
+        end
+        unless self.environment
+          raise "RAILS_ENV not set. Set MultiDb::ConnectionProxy.environment manually if you use multi_db outside rails" unless defined?(RAILS_ENV)
+          self.environment = RAILS_ENV
+        end
         master = ActiveRecord::Base
         slaves = init_slaves
-        raise "No slaves defined in database.yml" if slaves.empty?
+        raise "No slaves defined in database configuration" if slaves.empty?
         slaves.each {|slave| slave.send :include, MultiDb::ActiveRecordExtensions}
         ActiveRecord::Observer.send :include, MultiDb::ObserverExtensions
         ActiveRecord::Base.active_connections[master.name] = new(master, slaves)
@@ -29,12 +50,11 @@ module MultiDb
       #   development_slave_database1:
       # or
       #   production_slave_database_someserver:
-      # These would be available later as SlaveDatabaseSomeserver
+      # These would be available later as MultiDb::SlaveDatabaseSomeserver
       def init_slaves
-        dbs = YAML.load(ERB.new(File.read(File.join(RAILS_ROOT, 'config', 'database.yml'))).result)
         returning([]) do |slaves|
-          dbs.keys.each do |name|
-            if name =~ /#{RAILS_ENV}_(slave_database.*)/
+          self.configuration.keys.each do |name|
+            if name.to_s =~ /#{self.environment}_(slave_database.*)/
               MultiDb.module_eval %Q{
                 class #{$1.camelize} < ActiveRecord::Base
                   self.abstract_class = true
@@ -48,7 +68,7 @@ module MultiDb
       end
       
     end
-  
+
     def initialize(master, slaves)
       @slaves      = Scheduler.new(slaves.map(&:connection))
       @master      = master.connection
@@ -146,7 +166,7 @@ module MultiDb
     end
         
     def logger
-      RAILS_DEFAULT_LOGGER
+      ActiveRecord::Base.logger
     end
     
   end

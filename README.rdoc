@@ -1,0 +1,102 @@
+= multi_db
+
+=====-- This Plugin was inspired by Rick Olson's "masochism"-Plugin
+
+multi_db uses a connection proxy, which sends read queries to slave databases,
+and all write queries to the master database (Read/Write Split).
+Within transactions, while executing ActiveRecord Observers and
+within "with_master" blocks (see below), even read queries are sent to the 
+master database.
+
+=== Caveats
+
+* Only activerecord 2.0.x and 2.1.x are supported right now
+* allow_concurrency set to true is currently not supported
+
+Patches welcome!
+
+=== Install
+
+  gem install schoefmax-multi_db --source http://gems.github.com
+
+In Rails 2.1, add this to your environment.rb:
+
+  config.gem 'schoefmax-multi_db', :lib => 'multi_db', :source => 'http://gems.github.com'
+
+=== Setup
+
+In your database.yml, add sections for the slaves, e.g.:
+
+  production: # that would be the master
+    adapter: mysql
+    database: myapp_production
+    username: root
+    password: 
+    host: localhost
+
+  production_slave_database: # that would be a slave 
+    adapter: mysql
+    database: myapp_production
+    username: root
+    password: 
+    host: 10.0.0.2
+
+  production_slave_database2: # another slave
+    ...
+  production_slave_database_some_server: # yet another one
+    ...
+
+*NOTE*: multi_db identifies slave databases by looking for "slave_database" 
+somewhere in the database name!
+
+To enable the proxy globally, add this to your environment.rb, or some file in
+config/initializers:
+
+  MultiDb::ConnectionProxy.setup!
+
+If you only want to enable it for specific environments, add this to 
+the corresponding file in config/environments:
+
+  config.after_initialize do
+    MultiDb::ConnectionProxy.setup!
+  end
+
+In the development and test environments, you can use the same configuration
+for your master and slave databases.
+
+=== Differences to "masochism":
+
+* Support for multiple slave connections (round robin)
+* It sends anything except "select ..." queries to the master, instead of 
+  sending only specific things to the master and anything "else" to the slave, 
+  which is a lot more dangerous (e.g. "execute" wasn't sent to the master in 
+  earlier versions of masochism)
+* It sends everything coming from AR-Observers to the master, to avoid race 
+  conditions (idea from one of the commenters on a blog entry about masochism)
+* It uses its own query cache (with masochism, the slave's cache isn't emptied 
+  when there are changes on the master)
+* It supports immediate failover for slave connections
+* It will wait some time before trying to query a failed slave database again
+* It supports nested "with_master"-blocks (in masochism, nesting such blocks 
+  would unexpectedly switch you to the slave again)
+* It schedules a reconnect on the master connection to avoid problems
+  with virtual, migrating IPs for the master (e.g. multi-master HA setups)
+* It's possible to specify slave_database instead of master_database which
+  makes migration between with and without multi_db less dangerous
+* It allows environment specific settings for different slave setups
+* It doesn't come with set_to_master! and set_to_slave!, as these are 
+  considered dangerous (and make no sense) in a multi-slave setup. Instead of 
+  set_to_master!, use with_master { code }
+
+
+=== Running specs
+
+If you haven't already, install the rspec gem, then create an empty database
+called "multi_db_test" (you might want to tweak the spec/config/database.yml).
+From the plugin directory, run:
+
+  spec spec
+
+
+Copyright (c) 2008, Max Schöfmann <max (a) pragmatic-it de>
+Released under the MIT license
