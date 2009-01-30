@@ -10,7 +10,11 @@ module MultiDb
         
         # hijack the original method
         def connection
-          @@connection_proxy
+          if ConnectionProxy.master_models.include?(self.to_s)
+            self.retrieve_connection
+          else
+            @@connection_proxy
+          end
         end
       end
       

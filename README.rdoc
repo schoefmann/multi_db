@@ -10,13 +10,14 @@ master database.
 
 === Caveats
 
-* works with activerecord 2.1 - 2.2
+* works with activerecord 2.1 and 2.2, but is not threadsafe (yet)
+* when using Passenger or lightspeed you will probably need to introduce a before_filter which checks if the proxy is setup (see the discussion in the masochism readme: http://github.com/technoweenie/masochism/tree/master)
 
 === Install
 
   gem install schoefmax-multi_db --source http://gems.github.com
 
-In Rails 2.1, add this to your environment.rb:
+When using Rails, add this to your environment.rb:
 
   config.gem 'schoefmax-multi_db', :lib => 'multi_db', :source => 'http://gems.github.com'
 
@@ -38,13 +39,18 @@ In your database.yml, add sections for the slaves, e.g.:
     password: 
     host: 10.0.0.2
 
-  production_slave_database2: # another slave
+  production_slave_database_2: # another slave
     ...
-  production_slave_database_some_server: # yet another one
+  production_slave_database_in_india: # yet another one
     ...
 
-*NOTE*: multi_db identifies slave databases by looking for "slave_database" 
-somewhere in the database name!
+*NOTE*: multi_db identifies slave databases by looking for entries of the form
+"<tt><environment>_slave_database<_optional_name></tt>". As a (useless) side effect you
+get abstract classes named <tt>MultiDb::SlaveDatabaseInIndia</tt> etc.
+The advantage of specifying the slaves explicitly, instead of the master, is that
+you can use the same configuration file for scripts that don't use multi_db.
+Also, when you decide to disable multi_db for some reason, you don't have to 
+swap hosts in your <tt>database.yml</tt> from master to slave (which is easy to forget...).
 
 To enable the proxy globally, add this to your environment.rb, or some file in
 config/initializers:
@@ -58,38 +64,88 @@ the corresponding file in config/environments:
     MultiDb::ConnectionProxy.setup!
   end
 
-In the development and test environments, you can use the same configuration
-for your master and slave databases.
+In the development and test environments, you can use identical configurations
+for master and slave connections. This can help you finding (some of the) issues
+your application might have with a replicated database setup without actually having
+one on your development machine.
+
+=== Forcing the master for certain actions
+
+Just add this to your controller:
+
+  around_filter(:only => :foo_action) { |c,a| MyModel.connection.with_master { a.call } }
+
+=== Forcing the master for certain models
+
+In your environment.rb or an initializer, add:
+
+  MultiDb::ConnectionProxy.master_models = ['PaymentTransaction', ...]
+
+=== Usage outside of Rails
+
+You can use multi_db together with other framworks or in standalone scripts.
+Example:
+
+ require 'rubygems'
+ require 'active_record'
+ require 'multi_db'
+
+ ActiveRecord::Base.logger = Logger.new(STDOUT)
+ ActiveRecord::Base.configurations = {
+   'development' => {
+     'adapter'  => 'mysql',
+     'host'     => 'localhost',
+     'username' => 'root',
+     'database' => 'multi_db_test'
+   },
+   'development_slave_database' => {
+     'adapter'  => 'mysql',
+     'host'     => 'localhost',
+     'username' => 'root',
+     'database' => 'multi_db_test'
+   }
+ }
+ ActiveRecord::Base.establish_connection :development
+ MultiDb::ConnectionProxy.setup!
+
+ class MyModel < ActiveRecord::Base
+   # ...
+ end
+
+ # ...
+
+Note that the configurations hash should contain strings as keys instead of symbols.
 
 === Differences to "masochism":
 
-* Support for multiple slave connections (round robin)
-* It sends anything except "select ..." queries to the master, instead of 
-  sending only specific things to the master and anything "else" to the slave, 
-  which is a lot more dangerous (e.g. "execute" wasn't sent to the master in 
-  earlier versions of masochism)
-* It sends everything coming from AR-Observers to the master, to avoid race 
-  conditions (idea from one of the commenters on a blog entry about masochism)
-* It uses its own query cache (with masochism, the slave's cache isn't emptied 
-  when there are changes on the master)
+* Supports multiple slave databases (round robin)
+* It sends everything except "select ..." queries to the master, instead of
+  sending only specific things to the master and anything "else" to the slave.
+  This avoids accidential writes to the master when there are API changes in
+  ActiveRecord which haven't been picked up by multi_db yet.
+  Note that this behaviour will also always send helper methods like "+quote+" or
+  "<tt>add_limit!</tt>" to the master connection object, which doesn't add any
+  more load on the master, as these methods don't communicate with the db server
+  itself.
+* It uses its own query cache as the slave's cache isn't emptied when there are
+  changes on the master
 * It supports immediate failover for slave connections
 * It will wait some time before trying to query a failed slave database again
-* It supports nested "with_master"-blocks (in masochism, nesting such blocks 
-  would unexpectedly switch you to the slave again)
-* It schedules a reconnect on the master connection to avoid problems
-  with virtual, migrating IPs for the master (e.g. multi-master HA setups)
-* It's possible to specify slave_database instead of master_database which
-  makes migration between with and without multi_db less dangerous
-* It allows environment specific settings for different slave setups
-* It doesn't come with set_to_master! and set_to_slave!, as these are 
-  considered dangerous (and make no sense) in a multi-slave setup. Instead of 
-  set_to_master!, use with_master { code }
-
+* It supports nesting "with_master"-blocks, without unexpectedly switching you
+  back to the slave again
+* It schedules a reconnect of the master connection if statements fail there.
+  This might help with HA setups using virtual IPs (a test setup would be nice
+  to verify this)
+* You specify slave databases in the configuration instead of specifying an extra
+  master database. This makes disabling or removing multi_db less dangerous.
+* There are no <tt>set_to_master!</tt> and <tt>set_to_slave!</tt> methods, just
+  <tt>with_master(&block)</tt>
+* All proxied methods are dynamically generated for better performance
 
 === Contributors
 
- * Matt Conway http://github.com/wr0ngway
- * Matthias Marshall http://github.com/webops
+* Matt Conway http://github.com/wr0ngway
+* Matthias Marshall http://github.com/webops
 
 === Running specs
 

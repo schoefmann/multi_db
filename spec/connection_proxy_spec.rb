@@ -8,12 +8,21 @@ require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 RAILS_ROOT = MULTI_DB_SPEC_DIR
 
 describe MultiDb::ConnectionProxy do
-  
+
   before(:all) do
-    ActiveRecord::Base.establish_connection(MULTI_DB_SPEC_CONFIG['test'])
+    ActiveRecord::Base.configurations = MULTI_DB_SPEC_CONFIG
+    ActiveRecord::Base.establish_connection :test
+    class MasterModel < ActiveRecord::Base; end
+    @sql = 'SELECT 1 + 1 FROM DUAL'
+  end
+  
+  before(:each) do
     MultiDb::ConnectionProxy.setup!
     @proxy = ActiveRecord::Base.connection
-    @sql = 'SELECT 1 + 1 FROM DUAL'
+  end
+
+  it 'AR::B#connection should return an instance of MultiDb::ConnectionProxy' do
+    ActiveRecord::Base.connection.should be_a(MultiDb::ConnectionProxy)
   end
 
   it "should generate classes for each entry in the database.yml" do
@@ -113,6 +122,18 @@ describe MultiDb::ConnectionProxy do
     @proxy.master.retrieve_connection.should_receive(:reconnect!).and_return(true)
     @proxy.master.retrieve_connection.should_receive(:insert).and_return(1)
     @proxy.insert(@sql)
+  end
+
+  it 'should always use the master database for models configured as master models' do
+    MultiDb::SlaveDatabase2.retrieve_connection.should_receive(:select_all).once.and_return([])
+    MasterModel.connection.should == @proxy
+    MasterModel.first
+    
+    MultiDb::ConnectionProxy.master_models = ['MasterModel']
+    MasterModel.connection.should == @proxy.master.retrieve_connection
+    MultiDb::SlaveDatabase1.retrieve_connection.should_not_receive(:select_all)
+    MasterModel.retrieve_connection.should_receive(:select_all).once.and_return([])
+    MasterModel.first
   end
   
 end

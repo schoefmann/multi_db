@@ -13,33 +13,28 @@ module MultiDb
     attr_accessor :current
     
     class << self
-      
-      # Example:
-      #  MultiDb::ConnectionProxy.configuration = {
-      #    :production_master_database => {
-      #      :adapter => 
-      #    }
-      #  }
-      # defaults to the content of Rails.root/config/database.yml if not set and used with Rails
-      attr_accessor :configuration
+
       # defaults to RAILS_ENV if multi_db is used with Rails
+      # defaults to 'development' when used outside Rails
       attr_accessor :environment
       
+      # a list of models that should always go directly to the master
+      #
+      # Example:
+      #
+      #  MultiDb::ConnectionProxy.master_models = %w[PaymentTransactions]
+      attr_accessor :master_models
+
+      # Replaces the connection of ActiveRecord::Base with a proxy and
+      # establishes the connections to the slaves.
       def setup!
-        # if no configuration was set, we assume that rails is used and load the database.yml
-        unless self.configuration
-          raise "RAILS_ROOT not set. Set MultiDb::ConnectionProxy.configuration manually if you use multi_db outside rails" unless defined?(RAILS_ROOT)
-          self.configuration = YAML.load(ERB.new(File.read(File.join(RAILS_ROOT, 'config', 'database.yml'))).result)
-        end
-        unless self.environment
-          raise "RAILS_ENV not set. Set MultiDb::ConnectionProxy.environment manually if you use multi_db outside rails" unless defined?(RAILS_ENV)
-          self.environment = RAILS_ENV
-        end
+        self.master_models ||= []
+        self.environment   ||= (defined?(RAILS_ENV) ? RAILS_ENV : 'development')
+        
         master = ActiveRecord::Base
-        master.send :include, MultiDb::ActiveRecordExtensions
         slaves = init_slaves
-        raise "No slaves defined in database configuration" if slaves.empty?
-        slaves.each {|slave| slave.send :include, MultiDb::ActiveRecordExtensions}
+        raise "No slaves databases defined for environment: #{self.environment}" if slaves.empty?
+        master.send :include, MultiDb::ActiveRecordExtensions
         ActiveRecord::Observer.send :include, MultiDb::ObserverExtensions
         master.connection_proxy = new(master, slaves)
         master.logger.info("** multi_db with master and #{slaves.length} slave#{"s" if slaves.length > 1} loaded.")
@@ -54,7 +49,7 @@ module MultiDb
       # These would be available later as MultiDb::SlaveDatabaseSomeserver
       def init_slaves
         returning([]) do |slaves|
-          self.configuration.keys.each do |name|
+          ActiveRecord::Base.configurations.keys.each do |name|
             if name.to_s =~ /#{self.environment}_(slave_database.*)/
               MultiDb.module_eval %Q{
                 class #{$1.camelize} < ActiveRecord::Base

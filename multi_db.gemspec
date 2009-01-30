@@ -2,14 +2,14 @@
 
 Gem::Specification.new do |s|
   s.name = %q{multi_db}
-  s.version = "0.1.1"
+  s.version = "0.1.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 1.2") if s.respond_to? :required_rubygems_version=
   s.authors = ["Maximilian Sch\303\266fmann"]
   s.date = %q{2009-01-29}
   s.description = "Connection proxy for ActiveRecord for single master / multiple slave database deployments"
   s.email = "max@pragmatic-it.de"
-  s.extra_rdoc_files = ["lib/multi_db/active_record_extensions.rb", "lib/multi_db/connection_proxy.rb", "lib/multi_db/observer_extensions.rb", "lib/multi_db/query_cache_compat.rb", "lib/multi_db/scheduler.rb", "LICENSE", "README.rdoc"]
+  s.extra_rdoc_files = ["LICENSE", "README.rdoc"]
   s.files = ["lib/multi_db.rb", "lib/multi_db/active_record_extensions.rb", "lib/multi_db/connection_proxy.rb", "lib/multi_db/observer_extensions.rb", "lib/multi_db/query_cache_compat.rb", "lib/multi_db/scheduler.rb", "LICENSE", "README.rdoc", "spec/config/database.yml", "spec/connection_proxy_spec.rb", "spec/scheduler_spec.rb", "spec/spec_helper.rb", "multi_db.gemspec"]
   s.has_rdoc = true
   s.homepage = "http://github.com/schoefmax/multi_db"
