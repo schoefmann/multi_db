@@ -22,7 +22,7 @@ module MultiDb
       #
       # Example:
       #
-      #  MultiDb::ConnectionProxy.master_models = %w[PaymentTransactions]
+      #  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore']
       attr_accessor :master_models
 
       # Replaces the connection of ActiveRecord::Base with a proxy and

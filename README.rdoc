@@ -1,6 +1,6 @@
 = multi_db
 
-=====-- This Plugin was inspired by Rick Olson's "masochism"-Plugin
+=====-- This GEM was inspired by Rick Olson's "masochism"-Plugin
 
 multi_db uses a connection proxy, which sends read queries to slave databases,
 and all write queries to the master database (Read/Write Split).
@@ -79,7 +79,7 @@ Just add this to your controller:
 
 In your environment.rb or an initializer, add:
 
-  MultiDb::ConnectionProxy.master_models = ['PaymentTransaction', ...]
+  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore', 'PaymentTransaction', ...]
 
 === Usage outside of Rails
 
