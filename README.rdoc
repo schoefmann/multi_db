@@ -11,7 +11,7 @@ master database.
 === Caveats
 
 * works with activerecord 2.1 and 2.2, but is not threadsafe (yet)
-* when using Passenger or lightspeed you will probably need to introduce a before_filter which checks if the proxy is setup (see the discussion in the masochism readme: http://github.com/technoweenie/masochism/tree/master)
+* when using Passenger or lightspeed you will probably need to introduce a before_filter which checks if the proxy is setup (see the discussion in the masochism readme: http://github.com/technoweenie/masochism)
 
 === Install
 
@@ -142,10 +142,29 @@ Note that the configurations hash should contain strings as keys instead of symb
   <tt>with_master(&block)</tt>
 * All proxied methods are dynamically generated for better performance
 
+=== See also
+
+==== Masochism
+
+The original plugin:
+
+* http://github.com/technoweenie/masochism
+
+==== DataFabric
+
+A solution by FiveRuns, also based on masochism but without the "nested with_master"-issue,
+threadsafe and allows sharding of data.
+
+* http://github.com/fiveruns/data_fabric
+
 === Contributors
 
 * Matt Conway http://github.com/wr0ngway
 * Matthias Marshall http://github.com/webops
+
+=== Ideas
+
+See: http://github.com/schoefmax/multi_db/wikis/home
 
 === Running specs
 
