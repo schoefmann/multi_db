@@ -81,6 +81,19 @@ In your environment.rb or an initializer, add:
 
   MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore', 'PaymentTransaction', ...]
 
+=== Making one slave database sticky during a request
+
+This can be useful to leverage database level query caching as all queries will
+be sent to the same slave database during one web request.
+
+To enable, add this to your environment.rb just before <tt>MultiDb::ConnectionProxy.setup!</tt>:
+
+   MultiDb::ConnectionProxy.sticky_slave = true
+
+And add this to your ApplicationController:
+
+   after_filter { ActiveRecord::Base.connection_proxy.next_reader! }
+
 === Usage outside of Rails
 
 You can use multi_db together with other framworks or in standalone scripts.

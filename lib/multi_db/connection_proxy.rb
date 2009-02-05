@@ -25,11 +25,18 @@ module MultiDb
       #  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore']
       attr_accessor :master_models
 
+      # decides if we should switch to the next reader automatically.
+      # If set to false, an after|before_filter in the ApplicationController
+      # has to do this.
+      # This will not affect failover if a master is unavailable.
+      attr_accessor :sticky_slave
+
       # Replaces the connection of ActiveRecord::Base with a proxy and
       # establishes the connections to the slaves.
       def setup!
         self.master_models ||= []
         self.environment   ||= (defined?(RAILS_ENV) ? RAILS_ENV : 'development')
+        self.sticky_slave  ||= false
         
         master = ActiveRecord::Base
         slaves = init_slaves
@@ -97,7 +104,17 @@ module MultiDb
         create_delegation_method!(method)
       end
     end
-        
+
+    # Switches to the next slave database for read operations.
+    # Fails over to the master database if all slaves are unavailable.
+    def next_reader!
+      return if @with_master > 0 # don't if in with_master block
+      @current = @slaves.next
+    rescue Scheduler::NoMoreItems
+      logger.warn "[MULTIDB] All slaves are blacklisted. Reading from master"
+      @current = @master
+    end
+
     protected
 
     def get_connection(db_class)
@@ -107,10 +124,10 @@ module MultiDb
     def create_delegation_method!(method)
       self.instance_eval %Q{
         def #{method}(*args, &block)
-          #{'next_reader!' unless unsafe?(method)}
+          #{'next_reader!' unless self.class.sticky_slave || unsafe?(method)}
           #{target_method(method)}(:#{method}, *args, &block)
         end
-      }
+      }, __FILE__, __LINE__
     end
     
     def target_method(method)
@@ -136,14 +153,6 @@ module MultiDb
       @slaves.blacklist!(@current)
       next_reader!
       retry
-    end
-    
-    def next_reader!
-      return if @with_master > 0 # don't if in with_master block
-      @current = @slaves.next
-    rescue Scheduler::NoMoreItems
-      logger.warn "[MULTIDB] All slaves are blacklisted. Reading from master"
-      @current = @master
     end
     
     def reconnect_master!

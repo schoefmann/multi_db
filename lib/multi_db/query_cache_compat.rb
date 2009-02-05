@@ -2,7 +2,7 @@ module MultiDb
   # Implements the methods expected by the QueryCache module
   module QueryCacheCompat
     def select_all(*a, &b)
-      next_reader!
+      next_reader! unless ConnectionProxy.sticky_slave
       send_to_current(:select_all, *a, &b)
     end
     def columns(*a, &b)

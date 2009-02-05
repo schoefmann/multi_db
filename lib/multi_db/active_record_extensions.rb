@@ -4,24 +4,23 @@ module MultiDb
       base.alias_method_chain :reload, :master
 
       class << base
-        def connection_proxy=(proxy)
-          @@connection_proxy = proxy
-        end
         
+        cattr_accessor :connection_proxy
+
         # hijack the original method
         def connection
           if ConnectionProxy.master_models.include?(self.to_s)
             self.retrieve_connection
           else
-            @@connection_proxy
+            self.connection_proxy
           end
         end
       end
-      
+
     end
     
     def reload_with_master(*args, &block)
-      connection.with_master { reload_without_master }
+      connection_proxy.with_master { reload_without_master }
     end
   end
 end
