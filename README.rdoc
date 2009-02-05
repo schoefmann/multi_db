@@ -94,6 +94,9 @@ And add this to your ApplicationController:
 
    after_filter { ActiveRecord::Base.connection_proxy.next_reader! }
 
+*NOTE*: It's not possible to toggle this mode in a running process, as the dynamically
+generated methods will have the initially defined "stickyness" built in.
+
 === Usage outside of Rails
 
 You can use multi_db together with other framworks or in standalone scripts.

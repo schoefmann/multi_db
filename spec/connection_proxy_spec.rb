@@ -144,7 +144,7 @@ describe MultiDb::ConnectionProxy do
     before { MultiDb::ConnectionProxy.sticky_slave = true  }
     after  { MultiDb::ConnectionProxy.sticky_slave = false }
 
-    it 'should not switch to the next reader when #sticky_master is true' do
+    it 'should not switch to the next reader automatically' do
       @slave1.should_receive(:select_all).exactly(3)
       @slave2.should_receive(:select_all).exactly(0)
       3.times { @proxy.select_all(@sql) }
