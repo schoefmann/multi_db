@@ -20,7 +20,9 @@ module MultiDb
     end
     
     def reload_with_master(*args, &block)
-      connection_proxy.with_master { reload_without_master }
+      self.class.connection_proxy.with_master do
+        reload_without_master(*args, &block)
+      end
     end
   end
 end

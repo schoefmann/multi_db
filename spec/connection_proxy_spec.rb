@@ -12,7 +12,11 @@ describe MultiDb::ConnectionProxy do
   before(:all) do
     ActiveRecord::Base.configurations = MULTI_DB_SPEC_CONFIG
     ActiveRecord::Base.establish_connection :test
+    ActiveRecord::Migration.verbose = false
+    ActiveRecord::Migration.create_table(:master_models, :force => true) {}
     class MasterModel < ActiveRecord::Base; end
+    ActiveRecord::Migration.create_table(:foo_models, :force => true) {|t| t.string :bar}
+    class FooModel < ActiveRecord::Base; end
     @sql = 'SELECT 1 + 1 FROM DUAL'
   end
   
@@ -22,6 +26,10 @@ describe MultiDb::ConnectionProxy do
     @master = @proxy.master.retrieve_connection
     @slave1 = MultiDb::SlaveDatabase1.retrieve_connection
     @slave2 = MultiDb::SlaveDatabase2.retrieve_connection
+  end
+
+  after(:each) do
+    ActiveRecord::Base.send :alias_method, :reload, :reload_without_master
   end
 
   it 'AR::B#connection should return an instance of MultiDb::ConnectionProxy' do
@@ -137,6 +145,16 @@ describe MultiDb::ConnectionProxy do
     @slave1.should_not_receive(:select_all)
     MasterModel.retrieve_connection.should_receive(:select_all).once.and_return([])
     MasterModel.first
+  end
+
+  it 'should reload models from the master' do
+    foo = FooModel.create!(:bar => 'baz')
+    foo.bar = "not_saved"
+    @slave1.should_not_receive(:select_all)
+    @slave2.should_not_receive(:select_all)
+    foo.reload
+    # we didn't stub @master#select_all here, check that we actually hit the db
+    foo.bar.should == 'baz'
   end
   
   describe 'with sticky_slave ' do
