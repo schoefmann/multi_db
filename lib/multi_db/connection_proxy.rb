@@ -1,7 +1,8 @@
 module MultiDb
   class ConnectionProxy
-    include MultiDb::QueryCacheCompat
+    include QueryCacheCompat
     include ActiveRecord::ConnectionAdapters::QueryCache
+    extend ThreadLocalAccessors
     
     # Safe methods are those that should either go to the slave ONLY or go
     # to the current active connection.
@@ -9,8 +10,11 @@ module MultiDb
       :select_rows, :select, :verify!, :raw_connection, :active?, :reconnect!,
       :disconnect!, :reset_runtime, :log, :log_info ]
 
+    DEFAULT_MASTER_MODELS = ['CGI::Session::ActiveRecordStore::Session']
+
     attr_accessor :master
-    attr_accessor :current
+    tlattr_accessor :master_depth
+    tlattr_accessor :current
     
     class << self
 
@@ -22,7 +26,7 @@ module MultiDb
       #
       # Example:
       #
-      #  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore']
+      #  MultiDb::ConnectionProxy.master_models = ['MySessionStore', 'PaymentTransaction']
       attr_accessor :master_models
 
       # decides if we should switch to the next reader automatically.
@@ -34,7 +38,7 @@ module MultiDb
       # Replaces the connection of ActiveRecord::Base with a proxy and
       # establishes the connections to the slaves.
       def setup!
-        self.master_models ||= []
+        self.master_models ||= DEFAULT_MASTER_MODELS
         self.environment   ||= (defined?(RAILS_ENV) ? RAILS_ENV : 'development')
         self.sticky_slave  ||= false
         
@@ -46,6 +50,8 @@ module MultiDb
         master.connection_proxy = new(master, slaves)
         master.logger.info("** multi_db with master and #{slaves.length} slave#{"s" if slaves.length > 1} loaded.")
       end
+
+      protected
 
       # Slave entries in the database.yml must be named like this
       #   development_slave_database:
@@ -69,32 +75,34 @@ module MultiDb
           end
         end
       end
+
+      private :new
       
     end
 
     def initialize(master, slaves)
-      @slaves      = Scheduler.new(slaves)
-      @master      = master
-      @current     = @slaves.current
-      @reconnect   = false
-      @with_master = 0
+      @slaves    = Scheduler.new(slaves)
+      @master    = master
+      @reconnect = false
+      self.current      = @slaves.current
+      self.master_depth = 0
     end
-    
+
     def slave
       @slaves.current
     end
 
     def with_master
-      @current = @master
-      @with_master += 1
+      self.current = @master
+      self.master_depth += 1
       yield
     ensure
-      @with_master -= 1
-      @current = @slaves.current if @with_master == 0
+      self.master_depth -= 1
+      self.current = slave if master_depth.zero?
     end
     
     def transaction(start_db_transaction = true, &block)
-      with_master { get_connection(@current).transaction(start_db_transaction, &block) }
+      with_master { @master.retrieve_connection.transaction(start_db_transaction, &block) }
     end
 
     # Calls the method on master/slave and dynamically creates a new
@@ -108,18 +116,14 @@ module MultiDb
     # Switches to the next slave database for read operations.
     # Fails over to the master database if all slaves are unavailable.
     def next_reader!
-      return if @with_master > 0 # don't if in with_master block
-      @current = @slaves.next
+      return unless master_depth.zero? # don't if in with_master block
+      self.current = @slaves.next
     rescue Scheduler::NoMoreItems
       logger.warn "[MULTIDB] All slaves are blacklisted. Reading from master"
-      @current = @master
+      self.current = @master
     end
 
     protected
-
-    def get_connection(db_class)
-      db_class.retrieve_connection
-    end
 
     def create_delegation_method!(method)
       self.instance_eval %Q{
@@ -136,27 +140,27 @@ module MultiDb
     
     def send_to_master(method, *args, &block)
       reconnect_master! if @reconnect
-      get_connection(@master).send(method, *args, &block)
+      @master.retrieve_connection.send(method, *args, &block)
     rescue => e
       raise_master_error(e)
     end
     
     def send_to_current(method, *args, &block)
       reconnect_master! if @reconnect && master?
-      get_connection(@current).send(method, *args, &block)
+      current.retrieve_connection.send(method, *args, &block)
     rescue NotImplementedError, NoMethodError
       raise
     rescue => e # TODO don't rescue everything
       raise_master_error(e) if master?
       logger.warn "[MULTIDB] Error reading from slave database"
       logger.error %(#{e.message}\n#{e.backtrace.join("\n")})
-      @slaves.blacklist!(@current)
+      @slaves.blacklist!(current)
       next_reader!
       retry
     end
     
     def reconnect_master!
-      get_connection(@master).reconnect!
+      @master.retrieve_connection.reconnect!
       @reconnect = false
     end
     
@@ -171,12 +175,12 @@ module MultiDb
     end
     
     def master?
-      @current == @master
+      current == @master
     end
         
     def logger
       ActiveRecord::Base.logger
     end
-    
+
   end
 end

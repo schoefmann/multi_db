@@ -2,6 +2,7 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/query_cache_compat'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/active_record_extensions'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/observer_extensions'
+require MULTI_DB_SPEC_DIR + '/../lib/multi_db/thread_local_accessors'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 
@@ -21,6 +22,7 @@ describe MultiDb::ConnectionProxy do
   end
   
   before(:each) do
+    MultiDb::ConnectionProxy.master_models = ['MasterModel']
     MultiDb::ConnectionProxy.setup!
     @proxy = ActiveRecord::Base.connection_proxy
     @master = @proxy.master.retrieve_connection
@@ -32,8 +34,16 @@ describe MultiDb::ConnectionProxy do
     ActiveRecord::Base.send :alias_method, :reload, :reload_without_master
   end
 
-  it 'AR::B#connection should return an instance of MultiDb::ConnectionProxy' do
-    ActiveRecord::Base.connection.should be_kind_of(MultiDb::ConnectionProxy)
+  it 'AR::B should respond to #connection_proxy' do
+    ActiveRecord::Base.connection_proxy.should be_kind_of(MultiDb::ConnectionProxy)
+  end
+
+  it 'FooModel#connection should return an instance of MultiDb::ConnectionProxy' do
+    FooModel.connection.should be_kind_of(MultiDb::ConnectionProxy)
+  end
+
+  it 'MasterModel#connection should not return an instance of MultiDb::ConnectionProxy' do
+    MasterModel.connection.should_not be_kind_of(MultiDb::ConnectionProxy)
   end
 
   it "should generate classes for each entry in the database.yml" do
@@ -135,18 +145,6 @@ describe MultiDb::ConnectionProxy do
     @proxy.insert(@sql)
   end
 
-  it 'should always use the master database for models configured as master models' do
-    @slave2.should_receive(:select_all).once.and_return([])
-    MasterModel.connection.should == @proxy
-    MasterModel.first
-    
-    MultiDb::ConnectionProxy.master_models = ['MasterModel']
-    MasterModel.connection.should == @master
-    @slave1.should_not_receive(:select_all)
-    MasterModel.retrieve_connection.should_receive(:select_all).once.and_return([])
-    MasterModel.first
-  end
-
   it 'should reload models from the master' do
     foo = FooModel.create!(:bar => 'baz')
     foo.bar = "not_saved"
@@ -174,6 +172,56 @@ describe MultiDb::ConnectionProxy do
       3.times { @proxy.select_one(@sql) }
       @proxy.next_reader!
       7.times { @proxy.select_one(@sql) }
+    end
+
+  end
+
+  describe '(accessed from multiple threads)' do
+    # NOTE: We cannot put expectations on the connection objects itself
+    #       for the threading specs, as connection pooling will cause
+    #       different connections being returned for different threads.
+
+    it '#current and #next_reader! should be local to the thread' do
+      @proxy.current.should == MultiDb::SlaveDatabase1
+      @proxy.next_reader!.should == MultiDb::SlaveDatabase2
+      Thread.new do
+        @proxy.current.should == MultiDb::SlaveDatabase1
+        @proxy.next_reader!.should == MultiDb::SlaveDatabase2
+        @proxy.current.should == MultiDb::SlaveDatabase2
+        @proxy.next_reader!.should == MultiDb::SlaveDatabase1
+        @proxy.current.should == MultiDb::SlaveDatabase1
+      end
+      @proxy.current.should == MultiDb::SlaveDatabase2
+    end
+
+    it '#with_master should be local to the thread' do
+      @proxy.current.should_not == @proxy.master
+      @proxy.with_master do
+        @proxy.current.should == @proxy.master
+        Thread.new do
+          @proxy.current.should_not == @proxy.master
+          @proxy.with_master do
+            @proxy.current.should == @proxy.master
+          end
+          @proxy.current.should_not == @proxy.master
+        end
+        @proxy.current.should == @proxy.master
+      end
+      @proxy.current.should_not == @proxy.master
+    end
+
+    it 'should switch to the next reader even whithin with_master-block in different threads' do
+      # Because of connection pooling in AR 2.2, the second thread will cause
+      # a new connection being created behind the scenes. We therefore just test
+      # that these connections are beting retrieved for the right databases here.
+      @proxy.master.should_not_receive(:retrieve_connection).and_return(@master)
+      MultiDb::SlaveDatabase1.should_receive(:retrieve_connection).twice.and_return(@slave1)
+      MultiDb::SlaveDatabase2.should_receive(:retrieve_connection).once.and_return(@slave2)
+      @proxy.with_master do
+        Thread.new do
+          3.times { @proxy.select_one(@sql) }
+        end.join
+      end
     end
 
   end

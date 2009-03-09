@@ -1,4 +1,6 @@
-%w[rubygems active_record yaml erb spec].each {|lib| require lib}
+require 'rubygems'
+gem 'activerecord', '2.2.2'
+%w[active_record yaml erb spec].each {|lib| require lib}
 
 RAILS_ENV = ENV['RAILS_ENV'] = 'test'
 

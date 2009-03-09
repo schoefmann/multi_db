@@ -8,10 +8,27 @@ Within transactions, while executing ActiveRecord Observers and
 within "with_master" blocks (see below), even read queries are sent to the 
 master database.
 
+=== Important changes in 0.2.0
+
+* As of this version, <tt>ActiveRecord::Base.connection</tt> does not return the
+  connection proxy by default anymore (therefore the jump to 0.2.0). Only models
+  inheriting from AR::B return the proxy, unless they are defined as master_models
+  (see below). If you want to access the connection proxy from AR::B directly,
+  use <tt>ActiveRecord::Base.connection_proxy</tt>.
+
+* This version is the first attempt for thread-safety of this gem. <em>There might
+  still be some threading issues left!</em>. So please test your apps thoroughly
+  and report any issues you might encounter.
+
+* <tt>CGI::Session::ActiveRecordStore::Session</tt> is now automatically registered
+  as a master model.
+
 === Caveats
 
-* works with activerecord 2.1 and 2.2, but is not threadsafe (yet)
-* when using Passenger or lightspeed you will probably need to introduce a before_filter which checks if the proxy is setup (see the discussion in the masochism readme: http://github.com/technoweenie/masochism)
+* works with activerecord 2.1 and 2.2
+* when using Passenger or lightspeed you will probably need to introduce a
+  before_filter which checks if the proxy is setup (see the discussion in the
+  masochism readme: http://github.com/technoweenie/masochism)
 
 === Install
 
@@ -73,13 +90,16 @@ one on your development machine.
 
 Just add this to your controller:
 
-  around_filter(:only => :foo_action) { |c,a| MyModel.connection.with_master { a.call } }
+  around_filter(:only => :foo_action) { |c,a| ActiveRecord::Base.connection_proxy.with_master { a.call } }
 
 === Forcing the master for certain models
 
-In your environment.rb or an initializer, add:
+In your environment.rb or an initializer, add this *before* the call to <tt>setup!</tt>:
 
-  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore', 'PaymentTransaction', ...]
+  MultiDb::ConnectionProxy.master_models = ['CGI::Session::ActiveRecordStore::Session', 'PaymentTransaction', ...]
+  MultiDb::ConnectionProxy.setup!
+
+*NOTE*: You cannot safely add more master_models after calling <tt>setup!</tt>.
 
 === Making one slave database sticky during a request
 
@@ -153,7 +173,8 @@ Note that the configurations hash should contain strings as keys instead of symb
   This might help with HA setups using virtual IPs (a test setup would be nice
   to verify this)
 * You specify slave databases in the configuration instead of specifying an extra
-  master database. This makes disabling or removing multi_db less dangerous.
+  master database. This makes disabling or removing multi_db less dangerous
+  (Update: Recent versions of masochism support this, too).
 * There are no <tt>set_to_master!</tt> and <tt>set_to_slave!</tt> methods, just
   <tt>with_master(&block)</tt>
 * All proxied methods are dynamically generated for better performance

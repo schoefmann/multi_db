@@ -1,16 +1,18 @@
 module MultiDb
   class Scheduler
     class NoMoreItems < Exception; end
-    
+    extend ThreadLocalAccessors
+
     attr :items
     delegate :[], :[]=, :to => :items
+    tlattr_accessor :current_index
     
     def initialize(items, blacklist_timeout = 1.minute)
       @n = items.length
       @items     = items
       @blacklist = Array.new(@n, Time.at(0))
-      @current   = 0
       @blacklist_timeout = blacklist_timeout
+      self.current_index = 0
     end
     
     def blacklist!(item)
@@ -18,22 +20,22 @@ module MultiDb
     end
     
     def current
-      @items[@current]
+      @items[current_index]
     end
     
     def next
-      previous = @current
+      previous = current_index
       until(@blacklist[next_index!] < Time.now - @blacklist_timeout) do
-        raise NoMoreItems, 'All items are blacklisted' if @current == previous
+        raise NoMoreItems, 'All items are blacklisted' if current_index == previous
       end
-      @items[@current]
+      current
     end
     
     protected
     
     def next_index!
-      @current = (@current + 1) % @n
+      self.current_index = (current_index + 1) % @n
     end
-    
+
   end
 end

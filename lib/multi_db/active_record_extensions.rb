@@ -1,27 +1,54 @@
 module MultiDb
   module ActiveRecordExtensions
     def self.included(base)
+      base.send :include, InstanceMethods
+      base.send :extend, ClassMethods
       base.alias_method_chain :reload, :master
+      base.cattr_accessor :connection_proxy
+      # handle subclasses which were defined by the framework or plugins
+      base.send(:subclasses).each do |child|
+        child.hijack_connection
+      end
+    end
 
-      class << base
-        
-        cattr_accessor :connection_proxy
+    module InstanceMethods
+      def reload_with_master(*args, &block)
+        self.connection_proxy.with_master { reload_without_master }
+      end
+    end
 
-        # hijack the original method
-        def connection
-          if ConnectionProxy.master_models.include?(self.to_s)
-            self.retrieve_connection
-          else
-            self.connection_proxy
-          end
+    module ClassMethods
+      # Make sure transactions always switch to the master
+      def transaction(&block)
+        if self.connection.kind_of?(ConnectionProxy)
+          super
+        else
+          self.connection_proxy.with_master { super }
         end
       end
 
-    end
-    
-    def reload_with_master(*args, &block)
-      self.class.connection_proxy.with_master do
-        reload_without_master(*args, &block)
+      # make caching always use the ConnectionProxy
+      def cache(&block)
+        if ActiveRecord::Base.configurations.blank?
+          yield
+        else
+          self.connection_proxy.cache(&block)
+        end
+      end
+
+      def inherited(child)
+        super
+        child.hijack_connection
+      end
+
+      def hijack_connection
+        return if ConnectionProxy.master_models.include?(self.to_s)
+        logger.info "[MULTIDB] hijacking connection for #{self.to_s}"
+        class << self
+          def connection
+            self.connection_proxy
+          end
+        end
       end
     end
   end

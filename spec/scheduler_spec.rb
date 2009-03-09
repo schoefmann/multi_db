@@ -1,10 +1,11 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
+require MULTI_DB_SPEC_DIR + '/../lib/multi_db/thread_local_accessors'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 
 describe MultiDb::Scheduler do
   
   before do
-    @items = [5, 2, 4, 8]
+    @items = [5, 7, 4, 8]
     @scheduler = MultiDb::Scheduler.new(@items.clone)
   end
   
@@ -35,9 +36,23 @@ describe MultiDb::Scheduler do
   
   it 'should unblacklist items automatically' do
     @scheduler = MultiDb::Scheduler.new(@items.clone, 1.second)
-    @scheduler.blacklist!(2)
+    @scheduler.blacklist!(7)
     sleep(1)
-    @scheduler.next.should == 2 
+    @scheduler.next.should == 7
+  end
+
+  describe '(accessed from multiple threads)' do
+
+    it '#current and #next should return the same item for the same thread' do
+      @scheduler.current.should == 5
+      @scheduler.next.should == 7
+      Thread.new do
+        @scheduler.current.should == 5
+        @scheduler.next.should == 7
+      end.join
+      @scheduler.next.should == 4
+    end
+
   end
   
 end
