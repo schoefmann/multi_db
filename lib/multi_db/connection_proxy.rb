@@ -13,8 +13,7 @@ module MultiDb
     DEFAULT_MASTER_MODELS = ['CGI::Session::ActiveRecordStore::Session']
 
     attr_accessor :master
-    tlattr_accessor :master_depth
-    tlattr_accessor :current
+    tlattr_accessor :master_depth, :current, true
     
     class << self
 

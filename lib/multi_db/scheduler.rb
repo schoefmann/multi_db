@@ -5,7 +5,7 @@ module MultiDb
 
     attr :items
     delegate :[], :[]=, :to => :items
-    tlattr_accessor :current_index
+    tlattr_accessor :current_index, true
     
     def initialize(items, blacklist_timeout = 1.minute)
       @n = items.length

@@ -32,7 +32,8 @@ master database.
 
 === Install
 
-  gem install schoefmax-multi_db --source http://gems.github.com
+  gem sources --add http://gems.github.com # only if you haven't already added github
+  gem install schoefmax-multi_db
 
 When using Rails, add this to your environment.rb:
 

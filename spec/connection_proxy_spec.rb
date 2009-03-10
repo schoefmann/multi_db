@@ -2,7 +2,6 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/query_cache_compat'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/active_record_extensions'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/observer_extensions'
-require MULTI_DB_SPEC_DIR + '/../lib/multi_db/thread_local_accessors'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 

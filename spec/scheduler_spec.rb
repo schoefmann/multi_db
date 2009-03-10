@@ -1,5 +1,4 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
-require MULTI_DB_SPEC_DIR + '/../lib/multi_db/thread_local_accessors'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 
 describe MultiDb::Scheduler do
