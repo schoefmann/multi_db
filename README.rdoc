@@ -25,10 +25,7 @@ master database.
 
 === Caveats
 
-* works with activerecord 2.1 and 2.2
-* when using Passenger or lightspeed you will probably need to introduce a
-  before_filter which checks if the proxy is setup (see the discussion in the
-  masochism readme: http://github.com/technoweenie/masochism)
+* works only with activerecord 2.1, 2.2 and 2.3
 
 === Install
 
@@ -86,6 +83,28 @@ In the development and test environments, you can use identical configurations
 for master and slave connections. This can help you finding (some of the) issues
 your application might have with a replicated database setup without actually having
 one on your development machine.
+
+=== Using with Phusion Passenger
+
+With Passengers smart spawning method, child processes forked by the ApplicationSpawner
+won't have the connection proxy set up properly.
+
+To make it work, add this to your <tt>environment.rb</tt> or an initializer script
+(e.g. <tt>config/initializers/connection_proxy.rb</tt>):
+
+  if defined?(PhusionPassenger)
+    PhusionPassenger.on_event(:starting_worker_process) do |forked|
+      if forked
+        # ... set MultiDb configuration options, if any ...
+        MultiDb::ConnectionProxy.setup!
+      end
+    end
+  else # not using passenger (e.g. development/testing)
+    # ... set MultiDb configuration options, if any ...
+    MultiDb::ConnectionProxy.setup!
+  end
+
+Thanks to Nathan Esquenazi for testing this.
 
 === Forcing the master for certain actions
 
