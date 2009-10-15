@@ -10,7 +10,11 @@ module MultiDb
       :select_rows, :select, :verify!, :raw_connection, :active?, :reconnect!,
       :disconnect!, :reset_runtime, :log, :log_info ]
 
-    DEFAULT_MASTER_MODELS = ['CGI::Session::ActiveRecordStore::Session']
+    if ActiveRecord.const_defined?(:SessionStore) # >= Rails 2.3
+      DEFAULT_MASTER_MODELS = ['ActiveRecord::SessionStore::Session']
+    else # =< Rails 2.3
+      DEFAULT_MASTER_MODELS = ['CGI::Session::ActiveRecordStore::Session']
+    end
 
     attr_accessor :master
     tlattr_accessor :master_depth, :current, true
