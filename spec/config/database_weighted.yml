@@ -13,7 +13,7 @@ test_slave_database_1:
   password:
   host: 127.0.0.1
   pool: 5
-  weight: 0
+  weight: 10
 
 test_slave_database_2:
   adapter: mysql
@@ -22,7 +22,7 @@ test_slave_database_2:
   password:
   host: 127.0.0.1
   pool: 5
-  weight: 12
+  weight: 5
   
 test_slave_database_3:
   adapter: mysql
@@ -31,4 +31,13 @@ test_slave_database_3:
   password:
   host: 127.0.0.1
   pool: 5
-  weight: 3
+  weight: 2
+  
+test_slave_database_4:
+  adapter: mysql
+  database: multi_db_test
+  username: root
+  password:
+  host: 127.0.0.1
+  pool: 5
+  weight: 12

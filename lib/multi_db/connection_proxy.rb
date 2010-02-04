@@ -40,7 +40,7 @@ module MultiDb
 
       # Replaces the connection of ActiveRecord::Base with a proxy and
       # establishes the connections to the slaves.
-      def setup!
+      def setup!(scheduler = Scheduler)
         self.master_models ||= DEFAULT_MASTER_MODELS
         self.environment   ||= (defined?(RAILS_ENV) ? RAILS_ENV : 'development')
         self.sticky_slave  ||= false
@@ -50,10 +50,10 @@ module MultiDb
         raise "No slaves databases defined for environment: #{self.environment}" if slaves.empty?
         master.send :include, MultiDb::ActiveRecordExtensions
         ActiveRecord::Observer.send :include, MultiDb::ObserverExtensions
-        master.connection_proxy = new(master, slaves)
+        master.connection_proxy = new(master, slaves, scheduler)
         master.logger.info("** multi_db with master and #{slaves.length} slave#{"s" if slaves.length > 1} loaded.")
       end
-
+      
       protected
 
       # Slave entries in the database.yml must be named like this
@@ -65,12 +65,13 @@ module MultiDb
       # These would be available later as MultiDb::SlaveDatabaseSomeserver
       def init_slaves
         returning([]) do |slaves|
-          ActiveRecord::Base.configurations.keys.each do |name|
+          ActiveRecord::Base.configurations.each do |name, values|
             if name.to_s =~ /#{self.environment}_(slave_database.*)/
               MultiDb.module_eval %Q{
                 class #{$1.camelize} < ActiveRecord::Base
                   self.abstract_class = true
                   establish_connection :#{name}
+                  WEIGHT = #{values['weight'].blank? ? 0 : values['weight'].to_i} unless const_defined?('WEIGHT')
                 end
               }, __FILE__, __LINE__
               slaves << "MultiDb::#{$1.camelize}".constantize
@@ -83,8 +84,8 @@ module MultiDb
       
     end
 
-    def initialize(master, slaves)
-      @slaves    = Scheduler.new(slaves)
+    def initialize(master, slaves, scheduler = Scheduler)
+      @slaves    = scheduler.new(slaves)
       @master    = master
       @reconnect = false
       self.current      = @slaves.current
@@ -93,6 +94,10 @@ module MultiDb
 
     def slave
       @slaves.current
+    end
+    
+    def scheduler
+      @slaves
     end
 
     def with_master
