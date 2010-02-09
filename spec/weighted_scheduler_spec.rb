@@ -7,7 +7,6 @@ require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/weighted_scheduler'
 
 RAILS_ROOT = MULTI_DB_SPEC_DIR
-
 describe MultiDb::WeightedScheduler do
   
   before(:each) do
@@ -24,14 +23,50 @@ describe MultiDb::WeightedScheduler do
   before(:each) do
     MultiDb::ConnectionProxy.master_models = ['MasterModel']
     MultiDb::ConnectionProxy.setup!(MultiDb::WeightedScheduler)
-    @proxy = ActiveRecord::Base.connection_proxy
+    @proxy      = ActiveRecord::Base.connection_proxy
+    @scheduler  = @proxy.scheduler
+    
+    @master = @proxy.master.retrieve_connection
   end
 
   after(:each) do
     ActiveRecord::Base.send :alias_method, :reload, :reload_without_master
   end
+
+  describe "total weight of all slaves" do
+    it "knows the total weight of all slaves" do
+      @scheduler.total_weight.should == 26
+    end
+
+    it "caches the total weight" do
+      @scheduler.should_receive(:items).once.and_return([MultiDb::SlaveDatabase1])
+      @scheduler.total_weight
+      @scheduler.total_weight
+      @scheduler.total_weight
+    end
+  end
   
-  it "knows the total weight of all slaves" do
-    @proxy.scheduler.total_weight.should == 15
+  describe "distributes queries according to weight" do
+    
+    it "next_index! distributes the queries according to weight" do
+      n = 100_000
+      queries = []
+      # Fire off pretend queries
+      n.times.map do
+        @scheduler.send( :next_index! )
+      end
+      
+      # Count queries and group by the index the slave machine has 
+      queries.inject({}){|hsh, idx|
+        hsh[idx].nil? ? hsh[idx] = 1 : hsh[idx] += 1
+        hsh
+      }.each do |slave_idx, query_count|
+        # for large number of queries (> 10 000), the distribution is proportional to the weights. For 100k 'queries', we're accurate to two decimals.
+        weight_portion  = (@scheduler.items[slave_idx]::WEIGHT/@scheduler.total_weight.to_f).to_2f
+        query_portion   = (query_count/n.to_f).to_2f
+        
+        weight_portion.should == query_portion
+      end
+    end
   end
 end

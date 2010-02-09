@@ -67,11 +67,16 @@ module MultiDb
         returning([]) do |slaves|
           ActiveRecord::Base.configurations.each do |name, values|
             if name.to_s =~ /#{self.environment}_(slave_database.*)/
+              weight  = if values['weight'].blank?
+                          1
+                        else
+                          (v=values['weight'].to_i.abs).zero?? 1 : v
+                        end
               MultiDb.module_eval %Q{
                 class #{$1.camelize} < ActiveRecord::Base
                   self.abstract_class = true
                   establish_connection :#{name}
-                  WEIGHT = #{values['weight'].blank? ? 0 : values['weight'].to_i} unless const_defined?('WEIGHT')
+                  WEIGHT = #{weight} unless const_defined?('WEIGHT')
                 end
               }, __FILE__, __LINE__
               slaves << "MultiDb::#{$1.camelize}".constantize

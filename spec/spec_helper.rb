@@ -9,3 +9,11 @@ MULTI_DB_SPEC_CONFIG = YAML::load(File.open(MULTI_DB_SPEC_DIR + '/config/databas
 
 ActiveRecord::Base.logger = Logger.new(MULTI_DB_SPEC_DIR + "/debug.log")
 ActiveRecord::Base.configurations = MULTI_DB_SPEC_CONFIG
+
+
+class Float
+  # Rounds a float to 2 decimals
+  def to_2f
+    ('%.2f' % self).to_f
+  end
+end

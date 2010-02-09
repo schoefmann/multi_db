@@ -29,6 +29,7 @@ describe MultiDb::ConnectionProxy do
       @slave1 = MultiDb::SlaveDatabase1.retrieve_connection
       @slave2 = MultiDb::SlaveDatabase2.retrieve_connection
       @slave3 = MultiDb::SlaveDatabase3.retrieve_connection
+      @slave4 = MultiDb::SlaveDatabase4.retrieve_connection
     end
 
     after(:each) do
@@ -118,13 +119,13 @@ describe MultiDb::ConnectionProxy do
   
     it 'should invalidate the cache on insert, delete and update' do
       ActiveRecord::Base.cache do
-        meths = [:insert, :update, :delete, :insert]
+        meths = [:insert, :update, :delete, :insert, :update]
         meths.each do |meth|
           @master.should_receive(meth).and_return(true)
         end
         @slave2.should_receive(:select_all).twice
         @slave1.should_receive(:select_all).once
-        4.times do |i|
+        5.times do |i|
           @proxy.select_all(@sql)
           @proxy.send(meths[i])
         end
@@ -135,6 +136,7 @@ describe MultiDb::ConnectionProxy do
       @slave1.should_receive(:select_all).once.and_raise(RuntimeError)
       @slave2.should_receive(:select_all).once.and_raise(RuntimeError)
       @slave3.should_receive(:select_all).once.and_raise(RuntimeError)
+      @slave4.should_receive(:select_all).once.and_raise(RuntimeError)
       @master.should_receive(:select_all).and_return(true)
       @proxy.select_all(@sql)
     end
@@ -220,9 +222,10 @@ describe MultiDb::ConnectionProxy do
         MultiDb::SlaveDatabase1.should_receive(:retrieve_connection).twice.and_return(@slave1)
         MultiDb::SlaveDatabase2.should_receive(:retrieve_connection).once.and_return(@slave2)
         MultiDb::SlaveDatabase3.should_receive(:retrieve_connection).once.and_return(@slave3)
+        MultiDb::SlaveDatabase4.should_receive(:retrieve_connection).once.and_return(@slave4)
         @proxy.with_master do
           Thread.new do
-            4.times { @proxy.select_one(@sql) }
+            5.times { @proxy.select_one(@sql) }
           end.join
         end
       end
@@ -272,12 +275,12 @@ describe MultiDb::ConnectionProxy do
         MultiDb::SlaveDatabase1.const_defined?('WEIGHT').should be_true
       end
       
-      it "sets the WEIGHT to zero if no weight is configured" do
-        MultiDb::SlaveDatabase1::WEIGHT.should be_zero
+      it "sets the WEIGHT to 1 if no weight is configured" do
+        MultiDb::SlaveDatabase1::WEIGHT.should == 1
       end
       
       it "sets the WEIGHT to whatever it is configured to" do
-        MultiDb::SlaveDatabase2::WEIGHT.should == 12
+        MultiDb::SlaveDatabase2::WEIGHT.should == 10
       end
     end
     
