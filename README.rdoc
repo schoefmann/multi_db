@@ -137,6 +137,35 @@ And add this to your ApplicationController:
 *NOTE*: It's not possible to toggle this mode in a running process, as the dynamically
 generated methods will have the initially defined "stickyness" built in.
 
+=== Using the weighted scheduler
+The standard scheduler roundrobins queries to evenly to all slaves. This means that if you're using servers with different capacity (slower machines, some slaves receiving traffic from other apps etc) you might run into problems. The weighted scheduler tries to address this by assigning a weight attribute to each slave and distribute queries evenly among the server pool.
+
+In your database.yml file add your weights like so:
+  test_slave_database_1:
+    <<: *creds
+    host: my.slavedb_1
+    weight: 1
+  
+  test_slave_database_2:
+    <<: *creds
+    host: my.slavedb_2
+    weight: 10
+
+The above configuration will lead to slavedb_2 to receive 9 times more queries than slavedb_1. Adding in a new slave with:
+  test_slave_database_3:
+    <<: *creds
+    host: my.slavedb_3
+    weight: 5
+    
+leads to a distribution of 1:10:5. For 100k queries the numbers could look like this:
+  Slave 1, with weight 1: 6302 queries
+  Slave 2, with weight 10: 62764 queries
+  Slave 3, with weight 5: 30934 queries
+  
+The weighted scheduler does not guarantee that the same slave will not receive two queries in a row. We feel this is not an issue, or rather, that such a guarantee doesn't help much as it's the complexity of the queries rather than the number that creates problems.
+
+If no weight param is given for a slave, a weight of 1 is assumed. A weight of 0 is caught and silently transformed into a weight of 1.
+
 === Usage outside of Rails
 
 You can use multi_db together with other framworks or in standalone scripts.

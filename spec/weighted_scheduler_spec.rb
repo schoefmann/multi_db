@@ -50,9 +50,8 @@ describe MultiDb::WeightedScheduler do
     
     it "next_index! distributes the queries according to weight" do
       n = 100_000
-      queries = []
       # Fire off pretend queries
-      n.times.map do
+      queries = n.times.map do
         @scheduler.send( :next_index! )
       end
       
@@ -61,9 +60,9 @@ describe MultiDb::WeightedScheduler do
         hsh[idx].nil? ? hsh[idx] = 1 : hsh[idx] += 1
         hsh
       }.each do |slave_idx, query_count|
-        # for large number of queries (> 10 000), the distribution is proportional to the weights. For 100k 'queries', we're accurate to two decimals.
-        weight_portion  = (@scheduler.items[slave_idx]::WEIGHT/@scheduler.total_weight.to_f).to_2f
-        query_portion   = (query_count/n.to_f).to_2f
+        # for large number of queries (> 10 000), the distribution is proportional to the weights. For 100k 'queries', we're accurate to one decimal.
+        weight_portion  = (@scheduler.items[slave_idx]::WEIGHT/@scheduler.total_weight.to_f).to_1f
+        query_portion   = (query_count/n.to_f).to_1f
         
         weight_portion.should == query_portion
       end

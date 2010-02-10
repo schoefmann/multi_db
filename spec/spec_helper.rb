@@ -12,8 +12,8 @@ ActiveRecord::Base.configurations = MULTI_DB_SPEC_CONFIG
 
 
 class Float
-  # Rounds a float to 2 decimals
-  def to_2f
-    ('%.2f' % self).to_f
+  # Rounds a float to 1 decimals
+  def to_1f
+    ('%.1f' % self).to_f
   end
 end
