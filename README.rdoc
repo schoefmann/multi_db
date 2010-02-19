@@ -245,6 +245,7 @@ threadsafe and allows sharding of data.
 
 === Contributors
 
+* David Palm http://github.com/dvdplm
 * Matt Conway http://github.com/wr0ngway
 * Matthias Marshall http://github.com/webops
 
