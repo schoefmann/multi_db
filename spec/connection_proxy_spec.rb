@@ -284,6 +284,49 @@ describe MultiDb::ConnectionProxy do
       end
     end
     
-  end # with alternative scheduler
+    describe "defaults_to_master" do
+      before do
+        MultiDb::ConnectionProxy.defaults_to_master = true
+        MultiDb::ConnectionProxy.setup!
+        @proxy = ActiveRecord::Base.connection_proxy
+      end
+      
+      after do
+        MultiDb::ConnectionProxy.defaults_to_master = nil
+      end
+      
+      it "sets the default database to master" do
+        @proxy.current.should == @proxy.master
+      end
+      
+      it "is still master, when using with_master" do 
+        @proxy.with_master do 
+          @proxy.current.should == @proxy.master
+        end
+      end
+      
+      it "switches to slave, when using with_slave" do
+        @proxy.with_slave do 
+          @proxy.current.should_not == @proxy.master
+        end
+      end
+      
+      
+      it "keep right connection, when nesting with slave/master blocks" do
+        @proxy.with_slave do
+          @proxy.current.should_not == @proxy.master
+          @proxy.with_slave do
+            @proxy.current.should_not == @proxy.master
+            @proxy.with_master do
+              @proxy.current.should == @proxy.master
+            end
+            @proxy.current.should_not == @proxy.master
+          end
+          @proxy.current.should_not == @proxy.master
+        end
+        @proxy.current.should == @proxy.master
+      end
+    end
+  end
 end
 

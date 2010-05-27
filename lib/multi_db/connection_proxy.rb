@@ -37,6 +37,9 @@ module MultiDb
       # has to do this.
       # This will not affect failover if a master is unavailable.
       attr_accessor :sticky_slave
+      
+      # if master should be the default db
+      attr_accessor :defaults_to_master
 
       # Replaces the connection of ActiveRecord::Base with a proxy and
       # establishes the connections to the slaves.
@@ -93,8 +96,13 @@ module MultiDb
       @slaves    = scheduler.new(slaves)
       @master    = master
       @reconnect = false
-      self.current      = @slaves.current
-      self.master_depth = 0
+      if self.class.defaults_to_master
+        self.current = @master
+        self.master_depth = 1
+      else
+        self.current = @slaves.current
+        self.master_depth = 0
+      end
     end
 
     def slave
@@ -104,14 +112,25 @@ module MultiDb
     def scheduler
       @slaves
     end
-
+    
+    
     def with_master
       self.current = @master
       self.master_depth += 1
       yield
     ensure
       self.master_depth -= 1
-      self.current = slave if master_depth.zero?
+      self.current = slave if (master_depth <= 0) 
+    end
+  
+  
+    def with_slave
+      self.current = slave
+      self.master_depth -= 1
+      yield
+    ensure
+      self.master_depth += 1
+      self.current = @master if (master_depth > 0)
     end
     
     def transaction(start_db_transaction = true, &block)
@@ -129,7 +148,7 @@ module MultiDb
     # Switches to the next slave database for read operations.
     # Fails over to the master database if all slaves are unavailable.
     def next_reader!
-      return unless master_depth.zero? # don't if in with_master block
+      return if  master_depth > 0  # don't if in with_master block
       self.current = @slaves.next
     rescue Scheduler::NoMoreItems
       logger.warn "[MULTIDB] All slaves are blacklisted. Reading from master"
