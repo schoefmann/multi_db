@@ -1,7 +1,9 @@
+require 'active_record/connection_adapters/abstract/query_cache'
+
 module MultiDb
   class ConnectionProxy
-    include QueryCacheCompat
     include ActiveRecord::ConnectionAdapters::QueryCache
+    include QueryCacheCompat
     extend ThreadLocalAccessors
     
     # Safe methods are those that should either go to the slave ONLY or go

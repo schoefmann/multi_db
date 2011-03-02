@@ -25,7 +25,7 @@ master database.
 
 === Caveats
 
-* works only with activerecord 2.1, 2.2 and 2.3
+* works with activerecord 2.1, 2.2, 2.3, and 3.0
 
 === Install
 
