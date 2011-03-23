@@ -98,6 +98,7 @@ module MultiDb
       @slaves    = scheduler.new(slaves)
       @master    = master
       @reconnect = false
+      @query_cache = {}
       if self.class.defaults_to_master
         self.current = @master
         self.master_depth = 1
