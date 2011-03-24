@@ -31,10 +31,6 @@ describe MultiDb::ConnectionProxy do
       @slave3 = MultiDb::SlaveDatabase3.retrieve_connection
       @slave4 = MultiDb::SlaveDatabase4.retrieve_connection
     end
-
-    after(:each) do
-      ActiveRecord::Base.send :alias_method, :reload, :reload_without_master
-    end
   
     it 'AR::B should respond to #connection_proxy' do
       ActiveRecord::Base.connection_proxy.should be_kind_of(MultiDb::ConnectionProxy)

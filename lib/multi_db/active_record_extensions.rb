@@ -3,7 +3,6 @@ module MultiDb
     def self.included(base)
       base.send :include, InstanceMethods
       base.send :extend, ClassMethods
-      base.alias_method_chain :reload, :master
       base.cattr_accessor :connection_proxy
       # handle subclasses which were defined by the framework or plugins
       base.send(:subclasses).each do |child|
@@ -12,8 +11,8 @@ module MultiDb
     end
 
     module InstanceMethods
-      def reload_with_master(*args, &block)
-        self.connection_proxy.with_master { reload_without_master }
+      def reload(options = nil)
+        self.connection_proxy.with_master { super }
       end
     end
 

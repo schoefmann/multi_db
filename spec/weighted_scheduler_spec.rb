@@ -29,10 +29,6 @@ describe MultiDb::WeightedScheduler do
     @master = @proxy.master.retrieve_connection
   end
 
-  after(:each) do
-    ActiveRecord::Base.send :alias_method, :reload, :reload_without_master
-  end
-
   describe "total weight of all slaves" do
     it "knows the total weight of all slaves" do
       @scheduler.total_weight.should == 26
