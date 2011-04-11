@@ -57,8 +57,8 @@ describe MultiDb::WeightedScheduler do
         hsh
       }.each do |slave_idx, query_count|
         # for large number of queries (> 10 000), the distribution is proportional to the weights. For 100k 'queries', we're accurate to one decimal.
-        weight_portion  = (@scheduler.items[slave_idx]::WEIGHT/@scheduler.total_weight.to_f).round(1)
-        query_portion   = (query_count/n.to_f).round(1)
+        weight_portion  = (@scheduler.items[slave_idx]::WEIGHT/@scheduler.total_weight.to_f).round
+        query_portion   = (query_count/n.to_f).round
         
         weight_portion.should == query_portion
       end
