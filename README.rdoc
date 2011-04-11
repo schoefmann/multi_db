@@ -259,7 +259,7 @@ If you haven't already, install the rspec gem, then create an empty database
 called "multi_db_test" (you might want to tweak the spec/config/database.yml).
 From the plugin directory, run:
 
-  spec spec
+  rspec spec
 
 
 Copyright (c) 2008, Max Schoefmann <max (a) pragmatic-it de>

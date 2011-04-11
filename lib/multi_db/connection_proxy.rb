@@ -69,7 +69,7 @@ module MultiDb
       #   production_slave_database_someserver:
       # These would be available later as MultiDb::SlaveDatabaseSomeserver
       def init_slaves
-        returning([]) do |slaves|
+        [].tap do |slaves|
           ActiveRecord::Base.configurations.each do |name, values|
             if name.to_s =~ /#{self.environment}_(slave_database.*)/
               weight  = if values['weight'].blank?
@@ -143,7 +143,7 @@ module MultiDb
     # Calls the method on master/slave and dynamically creates a new
     # method on success to speed up subsequent calls
     def method_missing(method, *args, &block)
-      returning(send(target_method(method), method, *args, &block)) do 
+      send(target_method(method), method, *args, &block).tap do 
         create_delegation_method!(method)
       end
     end

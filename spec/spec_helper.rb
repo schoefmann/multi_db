@@ -1,6 +1,6 @@
 require 'rubygems'
-# gem 'activerecord', '2.2.2'
-%w[tlattr_accessors active_record yaml erb spec].each {|lib| require lib}
+gem 'activerecord', '3.0.5'
+%w[tlattr_accessors active_record yaml erb rspec logger].each {|lib| require lib}
 
 RAILS_ENV = ENV['RAILS_ENV'] = 'test'
 
