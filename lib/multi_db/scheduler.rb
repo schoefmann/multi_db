@@ -12,7 +12,7 @@ module MultiDb
       @items     = items
       @blacklist = Array.new(@n, Time.at(0))
       @blacklist_timeout = blacklist_timeout
-      self.current_index = 0
+      self.current_index = rand(@n)
     end
     
     def blacklist!(item)
