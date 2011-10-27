@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.version = "0.3.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 1.2") if s.respond_to? :required_rubygems_version=
-  s.authors = ["Maximilian Sch\303\266fmann"]
+  s.authors = ["Maximilian Schoefmann"]
   s.date = %q{2011-05-17}
   s.description = "Connection proxy for ActiveRecord for single master / multiple slave database deployments"
   s.email = "max@pragmatic-it.de"
