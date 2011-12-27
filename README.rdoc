@@ -28,13 +28,13 @@ master database.
 * works with activerecord 2.1, 2.2, 2.3, and 3.0
 
 === Install
-*Rails 2*
+==== Rails 2
   gem install multi_db
 
 Then add this to your environment.rb:
   config.gem 'multi_db', :lib => 'multi_db'
 
-*Rails 3*
+==== Rails 3
 put this in your Gemfile
   gem 'multi_db'
 
