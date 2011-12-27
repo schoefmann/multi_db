@@ -1,3 +1,5 @@
 spec/debug.log
 experimental
+.rvmrc
+Gemfile.lock
 
