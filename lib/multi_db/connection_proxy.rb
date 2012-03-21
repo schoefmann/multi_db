@@ -18,7 +18,7 @@ module MultiDb
       DEFAULT_MASTER_MODELS = ['CGI::Session::ActiveRecordStore::Session']
     end
 
-    attr_accessor :master
+    attr_accessor :master, :config
     tlattr_accessor :master_depth, :current, true
     
     class << self
@@ -97,6 +97,7 @@ module MultiDb
     def initialize(master, slaves, scheduler = Scheduler)
       @slaves    = scheduler.new(slaves)
       @master    = master
+      @config    = master.connection.instance_variable_get(:@config)
       @reconnect = false
       @query_cache = {}
       if self.class.defaults_to_master
