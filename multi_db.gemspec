@@ -1,3 +1,4 @@
+# coding: utf-8
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
