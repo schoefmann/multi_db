@@ -3,11 +3,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{multi_db}
-  s.version = "0.3.0"
+  s.version = "0.3.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 1.2") if s.respond_to? :required_rubygems_version=
   s.authors = ["Maximilian Sch\303\266fmann"]
-  s.date = %q{2011-05-17}
+  s.date = %q{2012-03-29}
   s.description = "Connection proxy for ActiveRecord for single master / multiple slave database deployments"
   s.email = "max@pragmatic-it.de"
   s.extra_rdoc_files = ["LICENSE", "README.rdoc"]
