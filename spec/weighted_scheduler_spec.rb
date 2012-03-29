@@ -6,7 +6,6 @@ require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/weighted_scheduler'
 
-RAILS_ROOT = MULTI_DB_SPEC_DIR
 describe MultiDb::WeightedScheduler do
   
   before(:each) do

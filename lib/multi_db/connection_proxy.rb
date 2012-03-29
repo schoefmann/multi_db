@@ -23,7 +23,7 @@ module MultiDb
     
     class << self
 
-      # defaults to RAILS_ENV if multi_db is used with Rails
+      # defaults to Rails.env if multi_db is used with Rails
       # defaults to 'development' when used outside Rails
       attr_accessor :environment
       
@@ -47,7 +47,7 @@ module MultiDb
       # establishes the connections to the slaves.
       def setup!(scheduler = Scheduler)
         self.master_models ||= DEFAULT_MASTER_MODELS
-        self.environment   ||= (defined?(RAILS_ENV) ? RAILS_ENV : 'development')
+        self.environment   ||= (defined?(Rails) ? Rails.env : 'development')
         self.sticky_slave  ||= false
         
         master = ActiveRecord::Base

@@ -18,7 +18,7 @@ module MultiDb
 
     module ClassMethods
       # Make sure transactions always switch to the master
-      def transaction(&block)
+      def transaction(options = {}, &block)
         if self.connection.kind_of?(ConnectionProxy)
           super
         else

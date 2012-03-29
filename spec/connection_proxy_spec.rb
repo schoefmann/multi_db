@@ -5,8 +5,6 @@ require MULTI_DB_SPEC_DIR + '/../lib/multi_db/observer_extensions'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/scheduler'
 require MULTI_DB_SPEC_DIR + '/../lib/multi_db/connection_proxy'
 
-RAILS_ROOT = MULTI_DB_SPEC_DIR
-
 describe MultiDb::ConnectionProxy do
 
   before(:all) do
