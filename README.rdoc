@@ -28,13 +28,15 @@ master database.
 * works with activerecord 2.1, 2.2, 2.3, and 3.0
 
 === Install
+==== Rails 2
+  gem install multi_db
 
-  gem sources --add http://gems.github.com # only if you haven't already added github
-  gem install schoefmax-multi_db
+Then add this to your environment.rb:
+  config.gem 'multi_db', :lib => 'multi_db'
 
-When using Rails, add this to your environment.rb:
-
-  config.gem 'schoefmax-multi_db', :lib => 'multi_db', :source => 'http://gems.github.com'
+==== Rails 3
+put this in your Gemfile
+  gem 'multi_db'
 
 === Setup
 
