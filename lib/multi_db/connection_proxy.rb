@@ -59,6 +59,14 @@ module MultiDb
         master.logger.info("** multi_db with master and #{slaves.length} slave#{"s" if slaves.length > 1} loaded.")
       end
       
+      def with_master
+        if defined?(ActiveRecord::Base.connection_proxy)
+          ActiveRecord::Base.connection_proxy.with_master{ yield }
+        else
+          yield
+        end
+      end
+
       protected
 
       # Slave entries in the database.yml must be named like this

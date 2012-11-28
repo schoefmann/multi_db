@@ -70,6 +70,14 @@ describe MultiDb::ConnectionProxy do
         @proxy.select_all(@sql)
       end
     end
+
+    it 'should force connection on the master' do
+      @master.should_receive(:select_all).exactly(1) # makes sure the first one goes to a slave
+      @proxy.select_all(@sql)
+      MultiDb::ConnectionProxy.with_master do
+        @proxy.select_all(@sql)
+      end
+    end
   
     it 'should switch to the next reader on selects' do
       @slave1.should_receive(:select_one).exactly(2)
