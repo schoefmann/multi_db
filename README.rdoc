@@ -108,6 +108,16 @@ To make it work, add this to your <tt>environment.rb</tt> or an initializer scri
 
 Thanks to Nathan Esquenazi for testing this.
 
+=== Using without Ruby on Rails
+
+Multi_db depends on a core extension from active_support.
+
+put this in your Gemfile
+  gem 'activesupport'
+
+Then require the necessary extension
+    require 'active_support/core_ext/module'
+
 === Forcing the master for certain actions
 
 Just add this to your controller:
