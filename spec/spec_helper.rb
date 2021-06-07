@@ -1,6 +1,8 @@
 require 'rubygems'
-gem 'activerecord', '3.0.5'
-%w[tlattr_accessors active_record yaml erb rspec logger].each {|lib| require lib}
+
+%w[rspec tlattr_accessors mysql2 active_record yaml erb rspec logger].each {|lib| require lib}
+
+require 'rails/observers/activerecord/active_record'
 
 module Rails
   def self.env
@@ -13,3 +15,8 @@ MULTI_DB_SPEC_CONFIG = YAML::load(File.open(MULTI_DB_SPEC_DIR + '/config/databas
 
 ActiveRecord::Base.logger = Logger.new(MULTI_DB_SPEC_DIR + "/debug.log")
 ActiveRecord::Base.configurations = MULTI_DB_SPEC_CONFIG
+
+RSpec.configure do |config|
+  config.tty = true
+  config.color = true
+end

@@ -1,42 +1,23 @@
 = multi_db
 
+This is a fork of the original multidb gem in order to make it working with Rails4.0.
+
 =====-- This GEM was inspired by Rick Olson's "masochism"-Plugin
 
 multi_db uses a connection proxy, which sends read queries to slave databases,
 and all write queries to the master database (Read/Write Split).
 Within transactions, while executing ActiveRecord Observers and
-within "with_master" blocks (see below), even read queries are sent to the 
+within "with_master" blocks (see below), even read queries are sent to the
 master database.
-
-=== Important changes in 0.2.0
-
-* As of this version, <tt>ActiveRecord::Base.connection</tt> does not return the
-  connection proxy by default anymore (therefore the jump to 0.2.0). Only models
-  inheriting from AR::B return the proxy, unless they are defined as master_models
-  (see below). If you want to access the connection proxy from AR::B directly,
-  use <tt>ActiveRecord::Base.connection_proxy</tt>.
-
-* This version is the first attempt for thread-safety of this gem. <em>There might
-  still be some threading issues left!</em>. So please test your apps thoroughly
-  and report any issues you might encounter.
-
-* <tt>CGI::Session::ActiveRecordStore::Session</tt> is now automatically registered
-  as a master model.
 
 === Caveats
 
-* works with activerecord 2.1, 2.2, 2.3, and 3.0
+* works with activerecord 4.0
 
 === Install
-==== Rails 2
-  gem install multi_db
 
-Then add this to your environment.rb:
-  config.gem 'multi_db', :lib => 'multi_db'
-
-==== Rails 3
 put this in your Gemfile
-  gem 'multi_db'
+  gem 'multi_db', git: 'git@github.com:iubenda/activeadmin.git', branch: 'rails4_0'
 
 === Setup
 
@@ -46,14 +27,14 @@ In your database.yml, add sections for the slaves, e.g.:
     adapter: mysql
     database: myapp_production
     username: root
-    password: 
+    password:
     host: localhost
 
-  production_slave_database: # that would be a slave 
+  production_slave_database: # that would be a slave
     adapter: mysql
     database: myapp_production
     username: root
-    password: 
+    password:
     host: 10.0.0.2
 
   production_slave_database_2: # another slave
@@ -66,7 +47,7 @@ In your database.yml, add sections for the slaves, e.g.:
 get abstract classes named <tt>MultiDb::SlaveDatabaseInIndia</tt> etc.
 The advantage of specifying the slaves explicitly, instead of the master, is that
 you can use the same configuration file for scripts that don't use multi_db.
-Also, when you decide to disable multi_db for some reason, you don't have to 
+Also, when you decide to disable multi_db for some reason, you don't have to
 swap hosts in your <tt>database.yml</tt> from master to slave (which is easy to forget...).
 
 To enable the proxy globally, add this to your environment.rb, or some file in
@@ -74,7 +55,7 @@ config/initializers:
 
   MultiDb::ConnectionProxy.setup!
 
-If you only want to enable it for specific environments, add this to 
+If you only want to enable it for specific environments, add this to
 the corresponding file in config/environments:
 
   config.after_initialize do
@@ -147,7 +128,7 @@ In your database.yml file add your weights like so:
     <<: *creds
     host: my.slavedb_1
     weight: 1
-  
+
   test_slave_database_2:
     <<: *creds
     host: my.slavedb_2
@@ -158,12 +139,12 @@ The above configuration will lead to slavedb_2 to receive 9 times more queries t
     <<: *creds
     host: my.slavedb_3
     weight: 5
-    
+
 leads to a distribution of 1:10:5. For 100k queries the numbers could look like this:
   Slave 1, with weight 1: 6302 queries
   Slave 2, with weight 10: 62764 queries
   Slave 3, with weight 5: 30934 queries
-  
+
 The weighted scheduler does not guarantee that the same slave will not receive two queries in a row. We feel this is not an issue, or rather, that such a guarantee doesn't help much as it's the complexity of the queries rather than the number that creates problems.
 
 If no weight param is given for a slave, a weight of 1 is assumed. A weight of 0 is caught and silently transformed into a weight of 1.
@@ -203,58 +184,6 @@ Example:
 
 Note that the configurations hash should contain strings as keys instead of symbols.
 
-=== Differences to "masochism":
-
-* Supports multiple slave databases (round robin)
-* It sends everything except "select ..." queries to the master, instead of
-  sending only specific things to the master and anything "else" to the slave.
-  This avoids accidential writes to the master when there are API changes in
-  ActiveRecord which haven't been picked up by multi_db yet.
-  Note that this behaviour will also always send helper methods like "+quote+" or
-  "<tt>add_limit!</tt>" to the master connection object, which doesn't add any
-  more load on the master, as these methods don't communicate with the db server
-  itself.
-* It uses its own query cache as the slave's cache isn't emptied when there are
-  changes on the master
-* It supports immediate failover for slave connections
-* It will wait some time before trying to query a failed slave database again
-* It supports nesting "with_master"-blocks, without unexpectedly switching you
-  back to the slave again
-* It schedules a reconnect of the master connection if statements fail there.
-  This might help with HA setups using virtual IPs (a test setup would be nice
-  to verify this)
-* You specify slave databases in the configuration instead of specifying an extra
-  master database. This makes disabling or removing multi_db less dangerous
-  (Update: Recent versions of masochism support this, too).
-* There are no <tt>set_to_master!</tt> and <tt>set_to_slave!</tt> methods, just
-  <tt>with_master(&block)</tt>
-* All proxied methods are dynamically generated for better performance
-
-=== See also
-
-==== Masochism
-
-The original plugin:
-
-* http://github.com/technoweenie/masochism
-
-==== DataFabric
-
-A solution by FiveRuns, also based on masochism but without the "nested with_master"-issue,
-threadsafe and allows sharding of data.
-
-* http://github.com/fiveruns/data_fabric
-
-=== Contributors
-
-* David Palm http://github.com/dvdplm
-* Matt Conway http://github.com/wr0ngway
-* Matthias Marshall http://github.com/webops
-
-=== Ideas
-
-See: http://github.com/schoefmax/multi_db/wikis/home
-
 === Running specs
 
 If you haven't already, install the rspec gem, then create an empty database
@@ -262,7 +191,3 @@ called "multi_db_test" (you might want to tweak the spec/config/database.yml).
 From the plugin directory, run:
 
   rspec spec
-
-
-Copyright (c) 2008, Max Schoefmann <max (a) pragmatic-it de>
-Released under the MIT license
